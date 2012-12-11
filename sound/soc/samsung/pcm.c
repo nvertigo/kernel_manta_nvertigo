@@ -20,7 +20,7 @@
 #include <sound/pcm_params.h>
 
 #include <plat/audio.h>
-#include <plat/dma.h>
+#include <plat/dma-pl330.h>
 
 #include "dma.h"
 #include "pcm.h"
