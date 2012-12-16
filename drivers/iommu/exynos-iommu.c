@@ -21,7 +21,7 @@
 #include <linux/errno.h>
 #include <linux/memblock.h>
 #include <linux/export.h>
-
+#include <linux/kmemleak.h>
 #include <asm/cacheflush.h>
 #include <asm/pgtable.h>
 
