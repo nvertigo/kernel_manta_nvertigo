@@ -218,7 +218,7 @@ static int exynos_tmu_init(struct tmu_info *info)
 	info->tmu_state = TMU_STATUS_INIT;
 
 	/* To poll current temp, set sampling rate */
-	info->sampling_rate = msecs_to_jiffies(1000);
+	info->sampling_rate = msecs_to_jiffies(100);
 
 	/* Need to initail regsiter setting after getting parameter info */
 	/* [28:23] vref [11:8] slope - Tunning parameter */
