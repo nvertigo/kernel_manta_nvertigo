@@ -94,25 +94,40 @@ static void tmu_monitor(struct work_struct *work)
 	struct tmu_info *info =
 		container_of(delayed_work, struct tmu_info, polling);
 	struct tmu_data *data = info->dev->platform_data;
-	int cur_temp;
+	unsigned int cur_temp;
+	static unsigned int throttle_flag = 1;
 
 	cur_temp = get_cur_temp(info);
 
-	dev_dbg(info->dev, "Current: %dc, FLAG=%d\n", cur_temp, info->tmu_state);
+	//pr_info("Current: %dºC\n", cur_temp);
 
 	mutex_lock(&tmu_lock);
+	if (cur_temp < data->ts.stop_throttle - 5)
+		info->tmu_state = TMU_STATUS_NORMAL;
+		
 	switch (info->tmu_state) {
 	case TMU_STATUS_NORMAL:
-		exynos_thermal_unthrottle();
+		if (throttle_flag == 0 || throttle_flag == 2) {
+			exynos_thermal_unthrottle();
+			throttle_flag = 1;
+		}
 		enable_irq(info->irq);
 		goto out;
 	case TMU_STATUS_THROTTLED:
-		if (cur_temp > data->ts.stop_throttle)
-			exynos_thermal_throttle();
+		if (cur_temp > data->ts.stop_throttle) {
+			if (throttle_flag == 1) {
+				exynos_thermal_throttle(data->ts.stop_throttle);
+				throttle_flag = 0;
+			}
+		}
+		if (cur_temp >= data->ts.stop_throttle + 10) {
+			if (throttle_flag == 0) {
+				exynos_thermal_throttle(data->ts.stop_throttle + 10);
+				throttle_flag = 2;
+			}
+		}
 		if (cur_temp >= data->ts.start_tripping)
 			info->tmu_state = TMU_STATUS_TRIPPED;
-		else
-			info->tmu_state = TMU_STATUS_NORMAL;
 		break;
 	case TMU_STATUS_TRIPPED:
 		if (cur_temp >= data->ts.start_emergency)
@@ -121,33 +136,18 @@ static void tmu_monitor(struct work_struct *work)
 		if (cur_temp >= data->ts.start_tripping) {
 			pr_err("thermal tripped: temp=%d\n", cur_temp);
 			/* Throttle twice while tripping */
-			exynos_thermal_throttle();
+			exynos_thermal_throttle(cur_temp);
 		} else {
 			info->tmu_state = TMU_STATUS_THROTTLED;
 		}
 		/* Throttle when tripped */
-		exynos_thermal_throttle();
+		exynos_thermal_throttle(cur_temp);
 		break;
 	default:
 		break;
 	}
-
-	/* Memory throttling */
-	if (cur_temp >= data->ts.start_mem_throttle &&
-		!info->mem_throttled) {
-		set_refresh_period(FREQ_IN_PLL, info->auto_refresh_mem_throttle);
-		info->mem_throttled = true;
-		dev_dbg(info->dev, "set auto refresh period %dns\n",
-				info->auto_refresh_mem_throttle);
-	} else if (cur_temp <= data->ts.stop_mem_throttle &&
-		info->mem_throttled) {
-		set_refresh_period(FREQ_IN_PLL, info->auto_refresh_normal);
-		info->mem_throttled = false;
-		dev_dbg(info->dev, "set auto refresh period %dns\n",
-				info->auto_refresh_normal);
-	}
-
-	queue_delayed_work_on(0, tmu_monitor_wq,
+	
+	queue_delayed_work(tmu_monitor_wq,
 			      &info->polling, info->sampling_rate);
 out:
 	mutex_unlock(&tmu_lock);
@@ -195,7 +195,7 @@ static int exynos_tmu_init(struct tmu_info *info)
 
 	/* Map auto refresh period of normal & memory throttle mode */
 	info->auto_refresh_normal = get_refresh_period(FREQ_IN_PLL);
-	info->auto_refresh_mem_throttle = info->auto_refresh_normal / 2;
+	//info->auto_refresh_mem_throttle = info->auto_refresh_normal / 2;
 
 	dev_info(info->dev, "Current auto refresh interval(%d nsec),"
 			" Normal auto refresh interval(%d nsec),"
@@ -268,7 +268,7 @@ static irqreturn_t tmu_irq(int irq, void *id)
 		return IRQ_HANDLED;
 	}
 
-	queue_delayed_work_on(0, tmu_monitor_wq, &info->polling, usecs_to_jiffies(0));
+	queue_delayed_work(tmu_monitor_wq, &info->polling, HZ);
 
 	return IRQ_HANDLED;
 }

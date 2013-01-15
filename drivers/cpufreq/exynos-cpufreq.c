@@ -223,30 +223,7 @@ out:
 	return ret;
 }
 
-static unsigned int exynos_thermal_lower_speed(void)
-{
-	unsigned int max = 0;
-	unsigned int curr;
-	int i;
-	struct cpufreq_frequency_table *freq_table = exynos_info->freq_table;
-
-	curr = max_thermal_freq;
-
-	for (i = 0; freq_table[i].frequency != CPUFREQ_TABLE_END; i++) {
-		if (freq_table[i].frequency != CPUFREQ_ENTRY_INVALID &&
-				freq_table[i].frequency < curr) {
-			max = freq_table[i].frequency;
-			break;
-		}
-	}
-
-	if (!max)
-		return curr;
-
-	return max;
-}
-
-void exynos_thermal_throttle(void)
+void exynos_thermal_throttle(unsigned int cur_temp)
 {
 	unsigned int cur;
 
@@ -258,10 +235,12 @@ void exynos_thermal_throttle(void)
 
 	mutex_lock(&cpufreq_lock);
 
-	max_thermal_freq = exynos_thermal_lower_speed();
+	if (cur_temp < 90)
+		max_thermal_freq = 1000000; //1GHz
+	else if (cur_temp >= 90)
+		max_thermal_freq = 700000; //700MHz
 
-	pr_debug("%s: temperature too high, cpu throttle at max %u\n",
-			__func__, max_thermal_freq);
+	pr_info("Temperature is too high, CPU throttle to %d\n", max_thermal_freq);
 
 	if (!exynos_cpufreq_disable) {
 		cur = exynos_getspeed(0);
@@ -289,7 +268,7 @@ void exynos_thermal_unthrottle(void)
 
 	max_thermal_freq = max_freq;
 
-	pr_debug("%s: temperature reduced, ending cpu throttling\n", __func__);
+	pr_info("Temperature reduced, ending CPU throttling setting max frequency to: %d\n", max_thermal_freq);
 
 	if (!exynos_cpufreq_disable) {
 		freqs.old = exynos_getspeed(0);
