@@ -36,6 +36,9 @@
 #define MICRO_FREQUENCY_MIN_SAMPLE_RATE		(10000)
 #define MIN_FREQUENCY_UP_THRESHOLD		(11)
 #define MAX_FREQUENCY_UP_THRESHOLD		(100)
+#define DEFAULT_FREQ_BOOST_TIME      (500000)
+
+unsigned int freq_boosted_time;
 
 static struct dbs_data od_dbs_data;
 static DEFINE_PER_CPU(struct od_cpu_dbs_info_s, od_cpu_dbs_info);
@@ -50,6 +53,8 @@ static struct od_dbs_tuners od_tuners = {
 	.down_differential = DEF_FREQUENCY_DOWN_DIFFERENTIAL,
 	.ignore_nice = 0,
 	.powersave_bias = 0,
+	.freq_boost_time = DEFAULT_FREQ_BOOST_TIME,
+	.boostfreq = 700000,
 };
 
 static void ondemand_powersave_bias_init_cpu(int cpu)
@@ -172,6 +177,14 @@ static void od_check_cpu(int cpu, unsigned int load_freq)
 
 	dbs_info->freq_lo = 0;
 
+	/* Only core0 controls the boost */
+	if (od_tuners.boosted && policy->cpu == 0) {
+		if (ktime_to_us(ktime_get()) - freq_boosted_time >=
+					od_tuners.freq_boost_time) {
+			od_tuners.boosted = 0;
+		}
+	}
+
 	/* Check for frequency increase */
 	if (load_freq > od_tuners.up_threshold * policy->cur) {
 		/* If switching to max speed, apply sampling_down_factor */
@@ -179,6 +192,13 @@ static void od_check_cpu(int cpu, unsigned int load_freq)
 			dbs_info->rate_mult =
 				od_tuners.sampling_down_factor;
 		dbs_freq_increase(policy, policy->max);
+		return;
+	}
+
+	/* check for frequency boost */
+	if (od_tuners.boosted && policy->cur < od_tuners.boostfreq) {
+		dbs_freq_increase(policy, od_tuners.boostfreq);
+		od_tuners.boostfreq = policy->cur;
 		return;
 	}
 
@@ -198,6 +218,10 @@ static void od_check_cpu(int cpu, unsigned int load_freq)
 		freq_next = load_freq / (od_tuners.up_threshold -
 				od_tuners.down_differential);
 
+		if (od_tuners.boosted &&
+				freq_next < od_tuners.boostfreq) {
+			freq_next = od_tuners.boostfreq;
+		}
 		/* No longer fully busy, reset rate_mult */
 		dbs_info->rate_mult = 1;
 
@@ -313,6 +337,51 @@ static void update_sampling_rate(unsigned int new_rate)
 		}
 		mutex_unlock(&dbs_info->cdbs.timer_mutex);
 	}
+}
+
+static ssize_t store_boosttime(struct kobject *kobj, struct attribute *attr,
+				const char *buf, size_t count)
+{
+	unsigned int input;
+	int ret;
+
+	ret = sscanf(buf, "%u", &input);
+	if (ret != 1)
+		return -EINVAL;
+
+	od_tuners.freq_boost_time = input;
+	return count;
+}
+
+
+static ssize_t store_boostpulse(struct kobject *kobj, struct attribute *attr,
+				const char *buf, size_t count)
+{
+	int ret;
+	unsigned long val;
+
+	ret = kstrtoul(buf, 0, &val);
+	if (ret < 0)
+		return ret;
+
+	od_tuners.boosted = 1;
+	freq_boosted_time = ktime_to_us(ktime_get());
+	return count;
+}
+
+static struct global_attr boostpulse =
+	__ATTR(boostpulse, 0777, NULL, store_boostpulse);
+
+static ssize_t store_boostfreq(struct kobject *a, struct attribute *b,
+				   const char *buf, size_t count)
+{
+	unsigned int input;
+	int ret;
+	ret = sscanf(buf, "%u", &input);
+	if (ret != 1)
+		return -EINVAL;
+	od_tuners.boostfreq = input;
+	return count;
 }
 
 static ssize_t store_sampling_rate(struct kobject *a, struct attribute *b,
@@ -433,6 +502,8 @@ show_one(od, up_threshold, up_threshold);
 show_one(od, sampling_down_factor, sampling_down_factor);
 show_one(od, ignore_nice_load, ignore_nice);
 show_one(od, powersave_bias, powersave_bias);
+show_one(od, boosttime, freq_boost_time);
+show_one(od, boostfreq, boostfreq);
 
 define_one_global_rw(sampling_rate);
 define_one_global_rw(io_is_busy);
@@ -441,6 +512,8 @@ define_one_global_rw(sampling_down_factor);
 define_one_global_rw(ignore_nice_load);
 define_one_global_rw(powersave_bias);
 define_one_global_ro(sampling_rate_min);
+define_one_global_rw(boosttime);
+define_one_global_rw(boostfreq);
 
 static struct attribute *dbs_attributes[] = {
 	&sampling_rate_min.attr,
@@ -450,6 +523,9 @@ static struct attribute *dbs_attributes[] = {
 	&ignore_nice_load.attr,
 	&powersave_bias.attr,
 	&io_is_busy.attr,
+	&boostpulse.attr,
+	&boosttime.attr,
+	&boostfreq.attr,
 	NULL
 };
 

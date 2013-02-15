@@ -111,6 +111,9 @@ struct od_dbs_tuners {
 	unsigned int down_differential;
 	unsigned int powersave_bias;
 	unsigned int io_is_busy;
+	unsigned int boosted;
+	unsigned int freq_boost_time;
+	unsigned int boostfreq;
 };
 
 struct cs_dbs_tuners {
