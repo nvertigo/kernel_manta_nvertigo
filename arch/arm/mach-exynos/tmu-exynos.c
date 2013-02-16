@@ -104,7 +104,7 @@ static void tmu_monitor(struct work_struct *work)
 	mutex_lock(&tmu_lock);
 	if (cur_temp < data->ts.stop_throttle - 5)
 		info->tmu_state = TMU_STATUS_NORMAL;
-		
+
 	switch (info->tmu_state) {
 	case TMU_STATUS_NORMAL:
 		if (throttle_flag == 0 || throttle_flag == 2) {
@@ -146,7 +146,7 @@ static void tmu_monitor(struct work_struct *work)
 	default:
 		break;
 	}
-	
+
 	queue_delayed_work(tmu_monitor_wq,
 			      &info->polling, info->sampling_rate);
 out:
