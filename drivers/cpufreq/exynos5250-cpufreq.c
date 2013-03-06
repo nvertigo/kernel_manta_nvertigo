@@ -71,7 +71,7 @@ static int exynos5250_bus_table[CPUFREQ_LEVEL_END] = {
 	667000, /* 1.3 GHz */
 	667000, /* 1.2 GHz */
 	667000, /* 1.1 GHz */
-	400000, /* 1.0 GHz */
+	667000, /* 1.0 GHz */
 	400000, /* 900 MHz */
 	400000,  /* 800 MHz */
 	160000,  /* 700 MHz */
