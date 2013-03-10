@@ -128,7 +128,7 @@ static int exynos_cpufreq_scale(unsigned int target_freq, unsigned int curr_freq
 	 */
 	safe_arm_volt = exynos_get_safe_armvolt(old_index, new_index);
 
-	arm_volt = volt_table[new_index] - 50000 ;
+	arm_volt = volt_table[new_index];
 	max_volt = volt_table[0];
 
 	/* When the new frequency is higher than current frequency */
