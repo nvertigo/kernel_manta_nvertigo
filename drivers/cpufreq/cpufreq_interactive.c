@@ -34,6 +34,9 @@
 #define CREATE_TRACE_POINTS
 #include <trace/events/cpufreq_interactive.h>
 
+static bool ktoonservative_is_activef = false;
+static bool interactive_is_activef = false;
+
 static atomic_t active_count = ATOMIC_INIT(0);
 
 struct cpufreq_interactive_cpuinfo {
@@ -617,6 +620,13 @@ static ssize_t store_boost(struct kobject *kobj, struct attribute *attr,
 
 define_one_global_rw(boost);
 
+extern void boostpulse_relay();
+
+void ktoonservative_is_active(bool val)
+{
+	ktoonservative_is_activef = val;
+}
+
 static ssize_t store_boostpulse(struct kobject *kobj, struct attribute *attr,
 				const char *buf, size_t count)
 {
@@ -628,8 +638,14 @@ static ssize_t store_boostpulse(struct kobject *kobj, struct attribute *attr,
 		return ret;
 
 	boostpulse_endtime = ktime_to_us(ktime_get()) + boostpulse_duration_val;
-	trace_cpufreq_interactive_boost("pulse");
-	cpufreq_interactive_boost();
+	if (ktoonservative_is_activef)
+		boostpulse_relay();
+
+	if (interactive_is_activef)
+	{
+		trace_cpufreq_interactive_boost("pulse");
+		cpufreq_interactive_boost();
+	}
 	return count;
 }
 
@@ -706,6 +722,8 @@ static int cpufreq_governor_interactive(struct cpufreq_policy *policy,
 
 	switch (event) {
 	case CPUFREQ_GOV_START:
+		interactive_is_activef = true;
+
 		if (!cpu_online(policy->cpu))
 			return -EINVAL;
 
@@ -728,7 +746,7 @@ static int cpufreq_governor_interactive(struct cpufreq_policy *policy,
 			pcpu->governor_enabled = 1;
 			smp_wmb();
 		}
-
+		
 		if (!hispeed_freq)
 			hispeed_freq = policy->max;
 
@@ -748,6 +766,7 @@ static int cpufreq_governor_interactive(struct cpufreq_policy *policy,
 		break;
 
 	case CPUFREQ_GOV_STOP:
+		interactive_is_activef = false;
 		for_each_cpu(j, policy->cpus) {
 			pcpu = &per_cpu(cpuinfo, j);
 			pcpu->governor_enabled = 0;
@@ -762,7 +781,7 @@ static int cpufreq_governor_interactive(struct cpufreq_policy *policy,
 			 */
 			pcpu->idle_exit_time = 0;
 		}
-
+		
 		if (atomic_dec_return(&active_count) > 0)
 			return 0;
 
