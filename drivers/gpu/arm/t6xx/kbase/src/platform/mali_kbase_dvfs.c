@@ -86,9 +86,9 @@ static mali_dvfs_info mali_dvfs_infotbl[] = {
 	{925000, 100, 0, 70, 0, 100000},
 	{925000, 160, 50, 65, 0, 160000},
 	{1025000, 266, 60, 78, 0, 400000},
-	{1075000, 350, 70, 80, 0, 667000},
-	{1125000, 400, 70, 80, 0, 800000},
-	{1150000, 450, 70, 80, 0, 800000},
+	{1075000, 350, 70, 80, 0, 400000},
+	{1125000, 400, 70, 80, 0, 667000},
+	{1150000, 450, 76, 99, 0, 800000},
 	{1200000, 533, 99, 100, 0, 800000},
 	{1200000, 612, 99, 100, 0, 800000},
 };
@@ -106,6 +106,7 @@ static mali_dvfs_info mali_dvfs_infotbl_static[] = {
 #define MALI_DVFS_STEP	ARRAY_SIZE(mali_dvfs_infotbl)
 unsigned int dvfs_step_min = 0;
 unsigned int dvfs_step_max = 7;
+unsigned int dvfs_step_max_minus1 = 450;
 
 #ifdef CONFIG_MALI_T6XX_DVFS
 typedef struct _mali_dvfs_status_type{
@@ -159,6 +160,22 @@ void hlpr_set_min_max_G3D(unsigned int min, unsigned int max)
 			dvfs_step_max = i+1;
 			mali_dvfs_infotbl[i].min_threshold = 99;
 			mali_dvfs_infotbl[i].max_threshold = 100;
+			if (dvfs_step_max - dvfs_step_min > 2)
+			{
+				mali_dvfs_infotbl[i-1].min_threshold = 76;
+				mali_dvfs_infotbl[i-1].max_threshold = 99;
+			}
+			else if (dvfs_step_max - dvfs_step_min == 2)
+			{
+				mali_dvfs_infotbl[i-1].min_threshold = 0;
+				mali_dvfs_infotbl[i-1].max_threshold = 99;
+			}
+			else if (dvfs_step_max - dvfs_step_min == 1)
+			{
+				mali_dvfs_infotbl[i-1].min_threshold = 0;
+				mali_dvfs_infotbl[i-1].max_threshold = 100;
+			}
+			dvfs_step_max_minus1 = mali_dvfs_infotbl[i-1].clock;
 		}
 	}
 }
@@ -212,7 +229,7 @@ static void mali_dvfs_event_proc(struct work_struct *w)
 #endif
 	spin_lock_irqsave(&mali_dvfs_spinlock, flags);
 	if (dvfs_status->utilisation > mali_dvfs_infotbl[dvfs_status->step].max_threshold) {
-		if (dvfs_status->step==kbase_platform_dvfs_get_level(450)) {
+		if (dvfs_status->step==kbase_platform_dvfs_get_level(dvfs_step_max_minus1)) {
 			if (platform->utilisation > mali_dvfs_infotbl[dvfs_status->step].max_threshold)
 				dvfs_status->step++;
 			OSK_ASSERT(dvfs_status->step < dvfs_step_max);
@@ -237,6 +254,11 @@ static void mali_dvfs_event_proc(struct work_struct *w)
 #endif
 	spin_unlock_irqrestore(&mali_dvfs_spinlock, flags);
 
+	if (dvfs_status->step >= dvfs_step_max)
+		dvfs_status->step = dvfs_step_max-1;
+	if (dvfs_status->step < dvfs_step_min)
+		dvfs_status->step = dvfs_step_min;
+		
 	kbase_platform_dvfs_set_level(dvfs_status->kbdev, dvfs_status->step);
 
 	mutex_unlock(&mali_enable_clock_lock);
@@ -705,9 +727,16 @@ static void kbase_platform_dvfs_set_vol(unsigned int vol)
 int kbase_platform_dvfs_get_level(int freq)
 {
 	int i;
-	for (i=dvfs_step_min; i < dvfs_step_max; i++) {
+	for (i=0; i < MALI_DVFS_STEP; i++) {
 		if (mali_dvfs_infotbl[i].clock == freq)
-			return i;
+		{
+			if (i >= dvfs_step_max)
+				return dvfs_step_max-1;
+			if (i < dvfs_step_min)
+				return dvfs_step_min;
+			else
+				return i;
+		}
 	}
 
 	return -1;
@@ -721,7 +750,12 @@ void kbase_platform_dvfs_set_level(kbase_device *kbdev, int level)
 	if (level == prev_level)
 		return;
 
-	if (WARN_ON((level >= dvfs_step_max)||(level < dvfs_step_min)))
+	if (level >= dvfs_step_max)
+		level = dvfs_step_max-1;
+	if (level < dvfs_step_min)
+		level = dvfs_step_min;
+
+	if (WARN_ON((level >= MALI_DVFS_STEP)||(level < 0)))
 		panic("invalid level");
 
 #ifdef CONFIG_MALI_T6XX_DVFS
@@ -755,7 +789,7 @@ int kbase_platform_dvfs_sprint_avs_table(char *buf)
 	if (buf==NULL)
 		return 0;
 
-	for (i=dvfs_step_max-1; i >= dvfs_step_min; i--) {
+	for (i=MALI_DVFS_STEP-1; i >= 0; i--) {
 		cnt+=sprintf(buf+cnt,"%dMhz:%d\n",
 				mali_dvfs_infotbl[i].clock, mali_dvfs_infotbl[i].voltage);
 	}
@@ -813,7 +847,7 @@ ssize_t show_time_in_state(struct device *dev, struct device_attribute *attr, ch
 	if (!kbdev)
 		return -ENODEV;
 
-	for (i = dvfs_step_min; i < dvfs_step_max; i++) {
+	for (i = 0; i < MALI_DVFS_STEP; i++) {
 		ret += snprintf(buf+ret, PAGE_SIZE-ret, "%d %llu\n",
 				mali_dvfs_infotbl[i].clock,
 				mali_dvfs_infotbl[i].time);
@@ -834,7 +868,7 @@ ssize_t set_time_in_state(struct device *dev, struct device_attribute *attr, con
 {
 	int i;
 
-	for (i = dvfs_step_min; i < dvfs_step_max; i++) {
+	for (i = 0; i < MALI_DVFS_STEP; i++) {
 		mali_dvfs_infotbl[i].time = 0;
 	}
 
