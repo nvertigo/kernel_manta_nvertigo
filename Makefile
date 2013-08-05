@@ -2,7 +2,7 @@ VERSION = 3
 PATCHLEVEL = 4
 SUBLEVEL = 39
 EXTRAVERSION =
-NAME = Saber-toothed Squirrel
+NAME = nvertigo
 
 # *DOCUMENTATION*
 # To see a list of typical targets execute "make help"
