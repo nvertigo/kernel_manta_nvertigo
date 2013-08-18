@@ -48,7 +48,7 @@
 
 #include <kbase/src/common/mali_kbase_gator.h>
 
-#define MALI_T6XX_DEFAULT_CLOCK 533000000
+#define MALI_T6XX_DEFAULT_CLOCK 620000000
 
 static struct clk *clk_g3d = NULL;
 static int clk_g3d_status = 0;
@@ -283,7 +283,7 @@ static ssize_t show_clock(struct device *dev, struct device_attribute *attr, cha
 	ret += snprintf(buf + ret, PAGE_SIZE - ret, "Current sclk_g3d[G3D_BLK] = %dMhz", clkrate / 1000000);
 
 	/* To be revised  */
-	ret += snprintf(buf + ret, PAGE_SIZE - ret, "\nPossible settings : 533, 450, 400, 350, 266, 160, 100Mhz");
+	ret += snprintf(buf + ret, PAGE_SIZE - ret, "\nPossible settings : 620, 533, 450, 400, 350, 266, 160, 100Mhz");
 
 	if (ret < PAGE_SIZE - 1)
 		ret += snprintf(buf + ret, PAGE_SIZE - ret, "\n");
@@ -313,8 +313,10 @@ static ssize_t set_clock(struct device *dev, struct device_attribute *attr, cons
 	if (!platform->sclk_g3d)
 		return -ENODEV;
 
-	if (sysfs_streq("533", buf)) {
-		freq = 533;
+	if (sysfs_streq("620", buf)) {
+		freq = 620;
+	} else if (sysfs_streq("533", buf)) {
+                freq = 533;
 	} else if (sysfs_streq("450", buf)) {
 		freq = 450;
 	} else if (sysfs_streq("400", buf)) {
@@ -740,7 +742,7 @@ static ssize_t show_upper_lock_dvfs(struct device *dev, struct device_attribute 
 		ret += snprintf(buf + ret, PAGE_SIZE - ret, "Current Upper Lock Level = %dMhz", locked_level);
 	else
 		ret += snprintf(buf + ret, PAGE_SIZE - ret, "Unset the Upper Lock Level");
-	ret += snprintf(buf + ret, PAGE_SIZE - ret, "\nPossible settings : 450, 400, 266, 160, 100, If you want to unlock : 533 or off");
+	ret += snprintf(buf + ret, PAGE_SIZE - ret, "\nPossible settings : 533, 450, 400, 266, 160, 100, If you want to unlock : 620 or off");
 
 #else
 	ret += snprintf(buf + ret, PAGE_SIZE - ret, "G3D DVFS is disabled. You can not set");
@@ -768,8 +770,10 @@ static ssize_t set_upper_lock_dvfs(struct device *dev, struct device_attribute *
 #ifdef CONFIG_MALI_T6XX_DVFS
 	if (sysfs_streq("off", buf)) {
 		mali_dvfs_freq_unlock();
-	} else if (sysfs_streq("533", buf)) {
+	} else if (sysfs_streq("620", buf)) {
 		mali_dvfs_freq_unlock();
+        } else if (sysfs_streq("533", buf)) {
+                mali_dvfs_freq_lock(6);
 	} else if (sysfs_streq("450", buf)) {
 		mali_dvfs_freq_lock(5);
 	} else if (sysfs_streq("400", buf)) {
@@ -784,7 +788,7 @@ static ssize_t set_upper_lock_dvfs(struct device *dev, struct device_attribute *
 		mali_dvfs_freq_lock(0);
 	} else {
 		dev_err(dev, "set_clock: invalid value\n");
-		dev_err(dev, "Possible settings : 450, 400, 266, 160, 100, If you want to unlock : 533\n");
+		dev_err(dev, "Possible settings : 533, 450, 400, 266, 160, 100, If you want to unlock : 620\n");
 		return -ENOENT;
 	}
 #else				/* CONFIG_MALI_T6XX_DVFS */
@@ -813,7 +817,7 @@ static ssize_t show_under_lock_dvfs(struct device *dev, struct device_attribute 
 		ret += snprintf(buf + ret, PAGE_SIZE - ret, "Current Under Lock Level = %dMhz", locked_level);
 	else
 		ret += snprintf(buf + ret, PAGE_SIZE - ret, "Unset the Under Lock Level");
-	ret += snprintf(buf + ret, PAGE_SIZE - ret, "\nPossible settings : 533, 450, 400, 266, 160, If you want to unlock : 100 or off");
+	ret += snprintf(buf + ret, PAGE_SIZE - ret, "\nPossible settings : 620, 533, 450, 400, 266, 160, If you want to unlock : 100 or off");
 
 #else
 	ret += snprintf(buf + ret, PAGE_SIZE - ret, "G3D DVFS is disabled. You can not set");
@@ -841,6 +845,8 @@ static ssize_t set_under_lock_dvfs(struct device *dev, struct device_attribute *
 #ifdef CONFIG_MALI_T6XX_DVFS
 	if (sysfs_streq("off", buf)) {
 		mali_dvfs_freq_under_unlock();
+        } else if (sysfs_streq("620", buf)) {
+                mali_dvfs_freq_under_lock(7);
 	} else if (sysfs_streq("533", buf)) {
 		mali_dvfs_freq_under_lock(6);
 	} else if (sysfs_streq("450", buf)) {
@@ -857,7 +863,7 @@ static ssize_t set_under_lock_dvfs(struct device *dev, struct device_attribute *
 		mali_dvfs_freq_under_unlock();
 	} else {
 		dev_err(dev, "set_clock: invalid value\n");
-		dev_err(dev, "Possible settings : 533, 450, 400, 266, 160, If you want to unlock : 100 or off\n");
+		dev_err(dev, "Possible settings : 620, 533, 450, 400, 266, 160, If you want to unlock : 100 or off\n");
 		return -ENOENT;
 	}
 #else

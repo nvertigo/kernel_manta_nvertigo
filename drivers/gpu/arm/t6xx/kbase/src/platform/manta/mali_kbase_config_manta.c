@@ -230,7 +230,7 @@ static kbase_attribute config_attributes[] = {
 	 (uintptr_t) &platform_funcs},
 	{
 	 KBASE_CONFIG_ATTR_GPU_FREQ_KHZ_MAX,
-	 533000},
+	 620000},
 
 	{
 	 KBASE_CONFIG_ATTR_GPU_FREQ_KHZ_MIN,
