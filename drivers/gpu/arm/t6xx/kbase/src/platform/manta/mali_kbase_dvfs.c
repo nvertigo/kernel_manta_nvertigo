@@ -89,7 +89,7 @@ static mali_dvfs_info mali_dvfs_infotbl[] = {
 	{1125000, 400, 60, 71, 0, 800000},
 	{1150000, 450, 70, 81, 0, 800000},
 	{1200000, 533, 80, 91, 0, 800000},
-	{1225000, 600, 90, 100, 0, 800000},
+	{1225000, 620, 90, 100, 0, 800000},
 };
 
 #define MALI_DVFS_STEP	ARRAY_SIZE(mali_dvfs_infotbl)
@@ -170,7 +170,7 @@ static void mali_dvfs_event_proc(struct work_struct *w)
 #endif
 	spin_lock_irqsave(&mali_dvfs_spinlock, flags);
 	if (dvfs_status->utilisation > mali_dvfs_infotbl[dvfs_status->step].max_threshold) {
-		if (dvfs_status->step==kbase_platform_dvfs_get_level(450)) {
+		if (dvfs_status->step==kbase_platform_dvfs_get_level(620)) {
 			if (platform->utilisation > mali_dvfs_infotbl[dvfs_status->step].max_threshold)
 				dvfs_status->step++;
 			BUG_ON(dvfs_status->step >= MALI_DVFS_STEP);
@@ -580,6 +580,10 @@ void kbase_platform_dvfs_set_clock(kbase_device *kbdev, int freq)
 		return;
 
 	switch (freq) {
+                case 620:
+                        gpll_rate = 620000000;
+                        aclk_400_rate = 620000000;
+                        break;
 		case 533:
 			gpll_rate = 533000000;
 			aclk_400_rate = 533000000;
@@ -590,14 +594,8 @@ void kbase_platform_dvfs_set_clock(kbase_device *kbdev, int freq)
 			break;
 		case 400:
 			gpll_rate = 800000000;
-
-		case 600:
-                        gpll_rate = 600000000;
-                        aclk_400_rate = 600000000;
+                        aclk_400_rate = 400000000;
                         break;
-
-			aclk_400_rate = 400000000;
-			break;
 		case 350:
 			gpll_rate = 1400000000;
 			aclk_400_rate = 350000000;
