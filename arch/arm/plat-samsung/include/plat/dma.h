@@ -37,9 +37,10 @@ enum s3c2410_chan_op {
 	S3C2410_DMAOP_STARTED,		/* indicate channel started */
 };
 
-struct s3c2410_dma_client {
+extern struct s3c2410_dma_client;
+/*{
 	char                *name;
-};
+};*/
 
 struct s3c2410_dma_chan;
 enum dma_ch;
