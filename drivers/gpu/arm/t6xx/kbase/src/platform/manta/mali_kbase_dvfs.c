@@ -83,12 +83,13 @@ typedef struct _mali_dvfs_info {
 
 static mali_dvfs_info mali_dvfs_infotbl[] = {
 	{900000, 100, 0, 40, 0, 100000},
-	{900000, 160, 45, 60, 0, 160000},
-	{1000000, 266, 55, 70, 0, 400000},
-	{1050000, 350, 65, 80, 0, 400000},
-	{1125000, 400, 75, 90, 0, 667000},
-	{1150000, 450, 85, 95, 0, 800000},
-	{1200000, 533, 94, 100, 0, 800000},
+	{900000, 160, 40, 46, 0, 160000},
+	{1000000, 266, 45, 51, 0, 400000},
+	{1050000, 350, 50, 61, 0, 400000},
+	{1125000, 400, 60, 71, 0, 800000},
+	{1150000, 450, 70, 81, 0, 800000},
+	{1200000, 533, 80, 91, 0, 800000},
+	{1225000, 600, 90, 100, 0, 800000},
 };
 
 #define MALI_DVFS_STEP	ARRAY_SIZE(mali_dvfs_infotbl)
@@ -119,7 +120,7 @@ static void update_time_in_state(int level);
 /*dvfs status*/
 static mali_dvfs_status mali_dvfs_status_current;
 #ifdef MALI_DVFS_ASV_ENABLE
-static const unsigned int mali_dvfs_vol_default[] = { 900000, 900000, 1000000, 1050000, 1125000, 1150000, 1200000 };
+static const unsigned int mali_dvfs_vol_default[] = { 900000, 900000, 1000000, 1050000, 1125000, 1150000, 1200000, 1225000 };
 
 static int mali_dvfs_update_asv(int cmd)
 {
@@ -589,6 +590,12 @@ void kbase_platform_dvfs_set_clock(kbase_device *kbdev, int freq)
 			break;
 		case 400:
 			gpll_rate = 800000000;
+
+		case 600:
+                        gpll_rate = 600000000;
+                        aclk_400_rate = 600000000;
+                        break;
+
 			aclk_400_rate = 400000000;
 			break;
 		case 350:
