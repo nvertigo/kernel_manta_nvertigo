@@ -373,10 +373,7 @@ KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
 		   -Werror-implicit-function-declaration \
 		   -Wno-format-security \
 		   -fno-delete-null-pointer-checks \
-                   -fno-aggressive-loop-optimizations \
-                   -march=armv7-a -mtune=cortex-a8 -mfpu=neon \
-                   -ffast-math -fsingle-precision-constant \
-                   -fgcse-lm -fgcse-sm -fsched-spec-load -fforce-addr
+                   -fno-aggressive-loop-optimizations
 KBUILD_AFLAGS_KERNEL :=
 KBUILD_CFLAGS_KERNEL :=
 KBUILD_AFLAGS   := -D__ASSEMBLY__
