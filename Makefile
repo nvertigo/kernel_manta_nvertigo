@@ -365,7 +365,8 @@ LINUXINCLUDE    := -I$(srctree)/arch/$(hdr-arch)/include \
                    $(if $(KBUILD_SRC), -I$(srctree)/include) \
                    -include $(srctree)/include/linux/kconfig.h
 
-KBUILD_CPPFLAGS := -D__KERNEL__
+KBUILD_CPPFLAGS := -D__KERNEL__ \
+                   -fno-aggressive-loop-optimizations
 
 KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
 		   -fno-strict-aliasing -fno-common \
@@ -373,6 +374,7 @@ KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
 		   -Wno-format-security \
 		   -fno-delete-null-pointer-checks \
                    -fno-inline-functions \
+                   -fno-aggressive-loop-optimizations \
                    -march=armv7-a -mtune=cortex-a15 -mfpu=neon \
                    -ffast-math -fsingle-precision-constant \
                    -fgcse-lm -fgcse-sm -fsched-spec-load -fforce-addr
